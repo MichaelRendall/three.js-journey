@@ -89,10 +89,15 @@ debugObject.clearColor = "#29191f";
 renderer.setClearColor(debugObject.clearColor);
 
 /**
+ * Load model
+ */
+const gltf = await gltfLoader.loadAsync("./model.glb");
+
+/**
  * Base geometry
  */
 const baseGeometry = {};
-baseGeometry.instance = new THREE.SphereGeometry(3);
+baseGeometry.instance = gltf.scene.children[0].geometry;
 baseGeometry.count = baseGeometry.instance.attributes.position.count;
 
 /**
@@ -153,23 +158,60 @@ scene.add(gpgpu.debug);
  */
 const particles = {};
 
+// Geometry
+const particlesUvArray = new Float32Array(baseGeometry.count * 2);
+const sizesArray = new Float32Array(baseGeometry.count);
+
+for (let y = 0; y < gpgpu.size; y++) {
+  for (let x = 0; x < gpgpu.size; x++) {
+    const i = y * gpgpu.size + x;
+    const i2 = i * 2;
+
+    // Particles Uv
+    const uvX = (x + 0.5) / gpgpu.size;
+    const uvY = (y + 0.5) / gpgpu.size;
+
+    particlesUvArray[i2] = uvX;
+    particlesUvArray[i2 + 1] = uvY;
+
+    // Size
+    sizesArray[i] = Math.random();
+  }
+}
+
+particles.geometry = new THREE.BufferGeometry();
+particles.geometry.setDrawRange(0, baseGeometry.count);
+particles.geometry.setAttribute(
+  "aParticlesUv",
+  new THREE.BufferAttribute(particlesUvArray, 2)
+);
+particles.geometry.setAttribute(
+  "aColor",
+  baseGeometry.instance.attributes.color
+);
+particles.geometry.setAttribute(
+  "aSize",
+  new THREE.BufferAttribute(sizesArray, 1)
+);
+
 // Material
 particles.material = new THREE.ShaderMaterial({
   vertexShader: particlesVertexShader,
   fragmentShader: particlesFragmentShader,
   uniforms: {
-    uSize: new THREE.Uniform(0.4),
+    uSize: new THREE.Uniform(0.07),
     uResolution: new THREE.Uniform(
       new THREE.Vector2(
         sizes.width * sizes.pixelRatio,
         sizes.height * sizes.pixelRatio
       )
     ),
+    uParticlesTexture: new THREE.Uniform(),
   },
 });
 
 // Points
-particles.points = new THREE.Points(baseGeometry.instance, particles.material);
+particles.points = new THREE.Points(particles.geometry, particles.material);
 scene.add(particles.points);
 
 /**
@@ -201,6 +243,8 @@ const tick = () => {
 
   // GPGPU update
   gpgpu.computation.compute();
+  particles.material.uniforms.uParticlesTexture.value =
+    gpgpu.computation.getCurrentRenderTarget(gpgpu.particlesVariable).texture;
 
   // Render normal scene
   renderer.render(scene, camera);

@@ -126,7 +126,7 @@ for (let i = 0; i < baseGeometry.count; i++) {
     baseGeometry.instance.attributes.position.array[i3 + 1];
   baseParticlesTexture.image.data[i4 + 2] =
     baseGeometry.instance.attributes.position.array[i3 + 2];
-  baseParticlesTexture.image.data[i4 + 3] = 0;
+  baseParticlesTexture.image.data[i4 + 3] = Math.random();
 }
 
 // Particles variable
@@ -138,6 +138,11 @@ gpgpu.particlesVariable = gpgpu.computation.addVariable(
 gpgpu.computation.setVariableDependencies(gpgpu.particlesVariable, [
   gpgpu.particlesVariable,
 ]);
+
+// Uniforms
+gpgpu.particlesVariable.material.uniforms.uTime = new THREE.Uniform(0);
+gpgpu.particlesVariable.material.uniforms.uDeltaTime = new THREE.Uniform(0);
+gpgpu.particlesVariable.material.uniforms.uBase = new THREE.Uniform(baseParticlesTexture);
 
 // Init
 gpgpu.computation.init();
@@ -242,6 +247,8 @@ const tick = () => {
   controls.update();
 
   // GPGPU update
+  gpgpu.particlesVariable.material.uniforms.uTime.value = elapsedTime;
+  gpgpu.particlesVariable.material.uniforms.uDeltaTime.value = deltaTime;
   gpgpu.computation.compute();
   particles.material.uniforms.uParticlesTexture.value =
     gpgpu.computation.getCurrentRenderTarget(gpgpu.particlesVariable).texture;

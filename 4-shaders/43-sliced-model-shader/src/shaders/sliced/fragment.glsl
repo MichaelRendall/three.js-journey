@@ -8,7 +8,9 @@ void main() {
     angle -= uSliceStart;
     angle = mod(angle, PI2);
 
-    if(angle > 0.0 && angle < uSliceStart + uSliceArc) {
+    if(angle > 0.0 && angle < uSliceArc) {
         discard;
     }
+
+    float csm_Slice;
 }

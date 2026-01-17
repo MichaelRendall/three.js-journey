@@ -53,6 +53,18 @@ gui
   .name("uSliceStart");
 gui.add(uniforms.uSliceArc, "value", 0, Math.PI * 2, 0.001).name("uSliceArc");
 
+const patchMap = {
+  csm_Slice: {
+    "#include <colorspace_fragment>": `
+        #include <colorspace_fragment>
+    
+        if(!gl_FrontFacing){
+            gl_FragColor = vec4(0.75, 0.15, 0.3, 1.0);
+        }
+    `,
+  },
+};
+
 const material = new THREE.MeshStandardMaterial({
   metalness: 0.5,
   roughness: 0.25,
@@ -66,12 +78,26 @@ const slicedMaterial = new CustomShaderMaterial({
   vertexShader: slicedVertexShader,
   fragmentShader: slicedFragmentShader,
   uniforms: uniforms,
+  patchMap: patchMap,
 
   // MeshStandardMaterial
   metalness: 0.5,
   roughness: 0.25,
   envMapIntensity: 0.5,
   color: "#858080",
+  side: THREE.DoubleSide,
+});
+
+const slicedDepthMaterial = new CustomShaderMaterial({
+  // CSM
+  baseMaterial: THREE.MeshDepthMaterial,
+  vertexShader: slicedVertexShader,
+  fragmentShader: slicedFragmentShader,
+  uniforms: uniforms,
+  patchMap: patchMap,
+
+  // MeshStandardMaterial
+  depthPacking: THREE.RGBADepthPacking,
 });
 
 // Model
@@ -83,6 +109,7 @@ gltfLoader.load("./gears.glb", (gltf) => {
     if (child.isMesh) {
       if (child.name === "outerHull") {
         child.material = slicedMaterial;
+        child.customDepthMaterial = slicedDepthMaterial;
       } else {
         child.material = material;
       }

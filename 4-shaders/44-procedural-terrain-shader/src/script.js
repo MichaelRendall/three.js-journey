@@ -39,14 +39,32 @@ rgbeLoader.load("/spruit_sunrise.hdr", (environmentMap) => {
  */
 // Geometry
 const geometry = new THREE.PlaneGeometry(10, 10, 500, 500);
+geometry.deleteAttribute("uv");
+geometry.deleteAttribute("normal");
 geometry.rotateX(-Math.PI * 0.5);
 
 // Material
+const uniforms = {
+  uTime: new THREE.Uniform(0),
+  uPositionFrequency: new THREE.Uniform(0.2),
+  uStrength: new THREE.Uniform(2.0),
+  uWarpFrequency: new THREE.Uniform(5),
+  uWarpStrength: new THREE.Uniform(0.5),
+};
+
+gui
+  .add(uniforms.uPositionFrequency, "value", 0, 1, 0.001)
+  .name("uPositionFrequency");
+gui.add(uniforms.uStrength, "value", 0, 10, 0.001).name("uStrength");
+gui.add(uniforms.uWarpFrequency, "value", 0, 10, 0.001).name("uWarpFrequency");
+gui.add(uniforms.uWarpStrength, "value", 0, 1, 0.001).name("uWarpStrength");
+
 const material = new CustomShaderMaterial({
   // CSM
   baseMaterial: THREE.MeshStandardMaterial,
   vertexShader: terrainVertexShader,
   fragmentShader: terrainFragmentShader,
+  uniforms: uniforms,
 
   // MeshStandardMaterial
   metalness: 0,
@@ -54,8 +72,19 @@ const material = new CustomShaderMaterial({
   color: "#85d534",
 });
 
+const depthMaterial = new CustomShaderMaterial({
+  // CSM
+  baseMaterial: THREE.MeshDepthMaterial,
+  vertexShader: terrainVertexShader,
+  uniforms: uniforms,
+
+  // MeshDepthMaterial
+  depthPacking: THREE.RGBADepthPacking,
+});
+
 // Mesh
 const terrain = new THREE.Mesh(geometry, material);
+terrain.customDepthMaterial = depthMaterial;
 terrain.receiveShadow = true;
 terrain.castShadow = true;
 scene.add(terrain);
@@ -157,6 +186,9 @@ const clock = new THREE.Clock();
 
 const tick = () => {
   const elapsedTime = clock.getElapsedTime();
+
+  // Uniforms
+  uniforms.uTime.value = elapsedTime;
 
   // Update controls
   controls.update();

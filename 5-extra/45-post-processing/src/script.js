@@ -8,6 +8,8 @@ import { GlitchPass } from "three/examples/jsm/postprocessing/GlitchPass.js";
 import { ShaderPass } from "three/examples/jsm/postprocessing/ShaderPass.js";
 import { RGBShiftShader } from "three/examples/jsm/shaders/RGBShiftShader.js";
 import { GammaCorrectionShader } from "three/examples/jsm/shaders/GammaCorrectionShader.js";
+import { SMAAPass } from "three/examples/jsm/postprocessing/SMAAPass.js";
+import { UnrealBloomPass } from "three/examples/jsm/postprocessing/UnrealBloomPass.js";
 import GUI from "lil-gui";
 
 /**
@@ -144,7 +146,12 @@ renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
 /**
  * Post processing
  */
-const effectComposer = new EffectComposer(renderer);
+// Render target
+const rendertarget = new THREE.WebGLRenderTarget(800, 600, {
+  samples: renderer.getPixelRatio() === 1 ? 2 : 0,
+});
+
+const effectComposer = new EffectComposer(renderer, rendertarget);
 effectComposer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
 effectComposer.setSize(sizes.width, sizes.height);
 
@@ -159,7 +166,7 @@ effectComposer.addPass(dotScreenPass);
 // Glitch Pass
 const glitchPass = new GlitchPass();
 // glitchPass.goWild = true;
-// glitchPass.enabled = false;
+glitchPass.enabled = false;
 effectComposer.addPass(glitchPass);
 
 // RGB Shift Pass
@@ -167,10 +174,30 @@ const rgbShiftPass = new ShaderPass(RGBShiftShader);
 rgbShiftPass.enabled = false;
 effectComposer.addPass(rgbShiftPass);
 
+// Unreal Bloom Pass
+const unrealBloomPass = new UnrealBloomPass();
+// unrealBloomPass.enabled = false;
+unrealBloomPass.strength = 0.3;
+unrealBloomPass.radius = 1;
+unrealBloomPass.threshold = 0.6;
+
+gui.add(unrealBloomPass, "enabled");
+gui.add(unrealBloomPass, "strength").min(0).max(2).step(0.001);
+gui.add(unrealBloomPass, "radius").min(0).max(2).step(0.001);
+gui.add(unrealBloomPass, "threshold").min(0).max(1).step(0.001);
+
+effectComposer.addPass(unrealBloomPass);
+
 // Gamma Correction Pass
 const gammaCorrectionPass = new ShaderPass(GammaCorrectionShader);
 // gammaCorrectionPass.enabled = false;
 effectComposer.addPass(gammaCorrectionPass);
+
+// SMAA Pass
+if (renderer.getPixelRatio() === 1 && !renderer.capabilities.isWebGL2) {
+  const smaaPass = new SMAAPass();
+  effectComposer.addPass(smaaPass);
+}
 
 /**
  * Animate
